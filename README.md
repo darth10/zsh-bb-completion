@@ -1,5 +1,7 @@
 # zsh-bb-completion
 
+[![CI](https://github.com/darth10/zsh-bb-completion/actions/workflows/ci.yml/badge.svg)](https://github.com/darth10/zsh-bb-completion/actions/workflows/ci.yml)
+
 Zsh completion for [Babashka](https://babashka.org) (`bb`) tasks and their subcommands.
 
 ```console

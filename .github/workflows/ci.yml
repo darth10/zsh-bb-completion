@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, bb ${{ matrix.bb }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        bb: ['1.13.220', latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: Install babashka
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          version_args=()
+          if [ "${{ matrix.bb }}" != latest ]; then
+            version_args=(--version "${{ matrix.bb }}")
+          fi
+          curl -sSfL https://raw.githubusercontent.com/babashka/babashka/master/install \
+            | bash -s -- --dir "$HOME/.local/bin" "${version_args[@]}"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Show versions
+        run: |
+          zsh --version
+          bb --version
+
+      - name: Check syntax
+        run: |
+          zsh -n _bb
+          zsh -n zsh-bb-completion.plugin.zsh
+          zsh -n tests/run.zsh
+
+      - name: Run tests
+        run: zsh -f tests/run.zsh
