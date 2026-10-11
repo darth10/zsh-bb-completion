@@ -1,0 +1,51 @@
+#compdef bb
+
+# Completes babashka tasks from `bb tasks`, and the subcommands of tasks that
+# use the `:cmd` key by reading their `--help` output at each level.
+
+(( $+functions[_bb_task_has_cmds] )) ||
+_bb_task_has_cmds() {
+  [[ -f bb.edn ]] || return 1
+  [[ $(bb -e "(-> \"bb.edn\" slurp clojure.edn/read-string :tasks (get '$1) :cmd some?)" 2>/dev/null) == true ]]
+}
+
+(( $+functions[_bb_help_section] )) ||
+_bb_help_section() {
+  awk -v sec="$1" '$0 == sec ":" {c=1; next} /^[^ ]/ {c=0} c && /^  [^ ]/ {print}'
+}
+
+(( $+functions[_bb_to_describe] )) ||
+_bb_to_describe() {
+  awk 'NF {n=$1; gsub(/:/,"\\:",n); $1=""; sub(/^ +/,""); print n":"$0}'
+}
+
+local -a tasks cmds names flags cmdpath
+local help i
+
+if (( CURRENT == 2 )); then
+  tasks=(${(f)"$(bb tasks 2>/dev/null | tail -n +3 | _bb_to_describe)"})
+  _describe -t tasks 'bb task' tasks
+  _files
+  return
+fi
+
+# Only `:cmd` tasks are known to handle `--help`. Other tasks can run instead.
+if ! _bb_task_has_cmds $words[2]; then
+  _files
+  return
+fi
+
+cmdpath=($words[2])
+for (( i = 3; i <= CURRENT; i++ )); do
+  help=$(bb $cmdpath --help 2>/dev/null)
+  names=(${(f)"$(print -r -- $help | _bb_help_section Commands | awk '{print $1}')"})
+  (( i < CURRENT && ${names[(Ie)$words[i]]} )) || break
+  cmdpath+=($words[i])
+done
+
+cmds=(${(f)"$(print -r -- $help | _bb_help_section Commands | _bb_to_describe)"})
+flags=(${(f)"$(print -r -- $help | _bb_help_section Options | grep -oE -- '--[[:alnum:]-]+')"})
+
+(( $#cmds )) && _describe -t commands 'bb command' cmds
+[[ $PREFIX == -* ]] && (( $#flags )) && compadd -- $flags
+(( $#cmds )) || _files

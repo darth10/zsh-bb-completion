@@ -1,0 +1,9 @@
+{:paths ["."]
+ :tasks
+ {:requires ([fixture-cmds])
+  db
+  {:doc "Database tools"
+   :cmd fixture-cmds/cmds}
+  danger
+  {:doc "Writes a marker file, so completion must never run it"
+   :task (spit "ran-danger" "")}}}
